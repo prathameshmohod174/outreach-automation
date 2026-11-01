@@ -11,12 +11,14 @@
 - Server-side Gemini draft endpoint with Firebase ID-token verification
 - Gmail OAuth connection with signed state, short-lived nonce cookie and AES-256-GCM encrypted refresh-token storage
 - Explicit self-test email to the connected Gmail account, with a three-attempt daily test cap and estimated Gmail API quota logging
+- Server-verified approval endpoint that atomically snapshots an approved email into a user-scoped send queue
+- Read-only queue UI; Firestore client writes to queue records are denied
 - Prospect email delivery and automated scheduling remain hard-disabled
 
 ## Data model
 All records are scoped beneath users/{uid}.
 
-- prospects/{prospectId}: organisation, contact, public profile URLs, source notes, status
+- prospects/{prospectId}: organisation, contact, public profile URLs, source notes, status\n- sendQueue/{prospectId}: immutable approved-message snapshot, recipient, approval time and queue status; written only by trusted server code
 - campaigns/{campaignId}: name, timezone, sending window, daily cap, allowed weekdays, state
 - drafts/{draftId}: prospect ID, subject, body, evidence basis, claims to verify, approval state, content hash
 - suppressions/{suppressionId}: normalised email, reason, timestamp
