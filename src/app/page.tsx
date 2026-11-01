@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
-import { Aperture, ArrowUpRight, CheckCircle2, Clock3, FileSpreadsheet, LogOut, Plus, Search, Send, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { Aperture, ArrowUpRight, CheckCircle2, Clock3, FileSpreadsheet, Globe, Loader2, LogOut, Plus, Search, Send, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { auth, db, firebaseConfigured, googleProvider } from "@/lib/firebase";
-import { Loader2, Globe } from "lucide-react";
 import type { Prospect } from "@/lib/types";
 import ProspectImport from "@/components/prospect-import";
 
