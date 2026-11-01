@@ -103,8 +103,19 @@ export default function Home() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ companyName: prospect.companyName, website: prospect.website, existingNotes: prospect.notes || "" })
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Website research failed.");
+      const responseText = await response.text();
+      let payload: { error?: string; research?: Prospect["research"] } = {};
+      try {
+        payload = responseText ? JSON.parse(responseText) as typeof payload : {};
+      } catch {
+        throw new Error(
+          response.status === 401
+            ? "Research authentication failed (401). Refresh the page, sign out and sign in again. If it persists, check that the Firebase Admin service account belongs to the same Firebase project as the web app."
+            : `Research server returned a non-JSON response (HTTP ${response.status}). Check the VS Code terminal for the server error.`
+        );
+      }
+      if (!response.ok) throw new Error(payload.error || `Website research failed (HTTP ${response.status}).`);
+      if (!payload.research) throw new Error("The research server returned no research data.");
       await updateDoc(doc(db, "users", user.uid, "prospects", prospect.id), {
         research: payload.research,
         status: "researched",
