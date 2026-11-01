@@ -7,6 +7,7 @@
 - Manual prospect intake
 - CSV/XLS/XLSX import with column alias mapping, preview, email validation and duplicate screening
 - Authenticated public-website research with same-origin page discovery, source URLs and AI-generated prospect briefs
+- Gemini email draft generation with editable subject/body and explicit save, approve or reject actions
 - Server-side Gemini draft endpoint with Firebase ID-token verification
 - Email sending hard-disabled
 
