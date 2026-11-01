@@ -5,6 +5,7 @@ A campaign-based creative outreach workspace built with Next.js, Firebase and Ge
 ## MVP
 - Import prospects from CSV/XLSX and add contacts manually.
 - Store company, person, website and public social profile information.
+- Research public company websites and create source-linked AI prospect briefs.
 - Generate individually researched email drafts with Gemini.
 - Review, edit, approve or reject every draft.
 - Schedule approved emails between 07:00 and 10:00 Asia/Kolkata.
@@ -23,6 +24,9 @@ A campaign-based creative outreach workspace built with Next.js, Firebase and Ge
 - Firebase Authentication and Firestore
 - Gemini API via server-side routes only
 - Gmail API OAuth (delivery phase)
+
+## Deployment configuration
+Configure Firebase client variables, `FIREBASE_SERVICE_ACCOUNT_BASE64`, and `GEMINI_API_KEY` in the hosting provider's environment settings. Never expose server credentials with a `NEXT_PUBLIC_` prefix.
 
 ## Local development
 See `docs/SETUP.md` for setup and environment variables.
