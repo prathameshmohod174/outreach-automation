@@ -7,6 +7,27 @@ import { fetchPublicWebsite } from "@/lib/public-website";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+function parseModelJson(text: string): Record<string, unknown> {
+  const cleaned = text
+    .replace(/^\uFEFF/, "")
+    .replace(/```(?:json)?/gi, "")
+    .trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    throw new Error("The research model returned an unreadable response. Please try again.");
+  }
+  try {
+    const parsed: unknown = JSON.parse(cleaned.slice(start, end + 1));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("The research model returned an invalid data structure.");
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new Error("The research model returned malformed JSON. Please try again; no prospect data was changed.");
+  }
+}
+
 const schema = z.object({
   companyName: z.string().min(1).max(200),
   website: z.string().min(1).max(2048),
@@ -50,7 +71,7 @@ Website extracts:
 ${JSON.stringify(pages)}`;
 
     const result = await model.generateContent(prompt);
-    const raw = JSON.parse(result.response.text());
+    const raw = parseModelJson(result.response.text());
     const sourceUrls = pages.map((page) => page.url);
     const safeSources = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 12) : [];
     const notableWork = Array.isArray(raw.notableWork) ? raw.notableWork.slice(0, 8).map((item: Record<string, unknown>) => ({
