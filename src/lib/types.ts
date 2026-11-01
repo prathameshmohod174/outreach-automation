@@ -12,6 +12,7 @@ export type Prospect = {
   status: ProspectStatus;
   createdAt: number;
   research?: ProspectResearch;
+  draft?: ProspectDraft;
 };
 export type CampaignSettings = {
   name: string;
@@ -34,4 +35,15 @@ export type ProspectResearch = {
   sources: { url: string; title: string; retrievedAt: string }[];
   researchedAt: string;
   researchedBy: string;
+};
+
+export type ProspectDraft = {
+  subject: string;
+  body: string;
+  personalisationBasis: string[];
+  claimsToVerify: string[];
+  status: "draft" | "approved" | "rejected";
+  generatedAt: string;
+  approvedAt?: string;
+  editedAt?: string;
 };
