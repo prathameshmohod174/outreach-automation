@@ -6,6 +6,7 @@ import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from 
 import { Aperture, ArrowUpRight, CheckCircle2, Clock3, FileSpreadsheet, LogOut, Plus, Search, Send, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { auth, db, firebaseConfigured, googleProvider } from "@/lib/firebase";
 import type { Prospect } from "@/lib/types";
+import ProspectImport from "@/components/prospect-import";
 
 const initialForm = { companyName: "", website: "", contactName: "", role: "", email: "", instagram: "", linkedin: "", notes: "" };
 
@@ -13,6 +14,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +66,7 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-6 pb-20 pt-12">
         <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div><p className="mb-3 text-[11px] font-semibold tracking-[.28em] text-[#d4ff6a]">CREATIVE PARTNERSHIPS / WORKSPACE</p><h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">Good work deserves<br/><span className="text-zinc-500">the right introduction.</span></h1><p className="mt-4 max-w-xl text-sm leading-6 text-zinc-400">Find the people behind the work. Understand what they make. Start a conversation that feels considered.</p></div>
-          <button onClick={() => setShowForm(true)} disabled={!user} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d4ff6a] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#e2ff9a] disabled:cursor-not-allowed disabled:opacity-40"><Plus size={17}/> Add prospect</button>
+          <div className="flex flex-wrap gap-2"><button onClick={() => setShowImport(true)} disabled={!user} className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"><FileSpreadsheet size={16}/> Import list</button><button onClick={() => setShowForm(true)} disabled={!user} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d4ff6a] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#e2ff9a] disabled:cursor-not-allowed disabled:opacity-40"><Plus size={17}/> Add prospect</button></div>
         </div>
 
         {!firebaseConfigured && <div className="mb-7 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200"><strong>Firebase setup required.</strong> Copy .env.example to .env.local and add your Firebase web app configuration before signing in.</div>}
@@ -86,6 +88,7 @@ export default function Home() {
         </div>
       </section>
 
+      {showImport && user && <ProspectImport userId={user.uid} existingProspects={prospects} onClose={() => setShowImport(false)} onImported={() => undefined}/>}
       {showForm && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/75 p-4"><form onSubmit={addProspect} className="my-8 w-full max-w-2xl rounded-2xl border border-zinc-700 bg-[#111114] p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><h2 className="text-xl font-semibold">Add a prospect</h2><p className="mt-1 text-xs text-zinc-500">Add whatever information you have. You can fill gaps during research.</p></div><button type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"><X size={17}/></button></div><div className="grid gap-4 sm:grid-cols-2">{([{key:"companyName",label:"Company / studio *",required:true},{key:"website",label:"Website"},{key:"contactName",label:"Contact person"},{key:"role",label:"Role / designation"},{key:"email",label:"Email address",type:"email"},{key:"instagram",label:"Instagram URL"},{key:"linkedin",label:"LinkedIn URL"}] as const).map((field) => <label key={field.key} className="block"><span className="mb-1.5 block text-xs text-zinc-400">{field.label}</span><input required={"required" in field} type={"type" in field ? field.type : "text"} value={form[field.key]} onChange={(e) => setForm({...form,[field.key]:e.target.value})} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-[#d4ff6a]"/></label>)}<label className="block sm:col-span-2"><span className="mb-1.5 block text-xs text-zinc-400">Research notes / relevant creative work</span><textarea rows={3} value={form.notes} onChange={(e) => setForm({...form,notes:e.target.value})} placeholder="Projects, visual style, recent work, why this studio is relevant..." className="w-full resize-y rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm outline-none focus:border-[#d4ff6a]"/></label></div><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-zinc-700 px-4 py-2 text-sm">Cancel</button><button disabled={saving || !user} className="rounded-lg bg-[#d4ff6a] px-5 py-2 text-sm font-semibold text-black disabled:opacity-50">{saving ? "Saving..." : "Save prospect"}</button></div></form></div>}
     </main>
   );
