@@ -9,7 +9,9 @@
 - Authenticated public-website research with same-origin page discovery, source URLs and AI-generated prospect briefs
 - Gemini email draft generation with editable subject/body and explicit save, approve or reject actions
 - Server-side Gemini draft endpoint with Firebase ID-token verification
-- Email sending hard-disabled
+- Gmail OAuth connection with signed state, short-lived nonce cookie and AES-256-GCM encrypted refresh-token storage
+- Explicit self-test email to the connected Gmail account, with a three-attempt daily test cap and estimated Gmail API quota logging
+- Prospect email delivery and automated scheduling remain hard-disabled
 
 ## Data model
 All records are scoped beneath users/{uid}.
@@ -30,10 +32,11 @@ All records are scoped beneath users/{uid}.
 8. Honour opt-outs and maintain a suppression list.
 
 ## Next milestones
-1. Draft review/editor, approve/reject actions and Firestore audit trail.
-3. Campaign creation and configurable sending limits.
-4. Gmail OAuth, delivery worker, unsubscribe and bounce handling.
-5. Analytics and deployment.
+1. Enforce server-side approval integrity, content hashes and an audit trail.
+2. Build an idempotent approved-draft queue with recipient validation, duplicate and suppression checks.
+3. Add Asia/Kolkata scheduling, configurable campaign caps, send history and quota analytics.
+4. Add delivery/bounce handling and operational monitoring.
+5. Review deployment and OAuth verification requirements before enabling unattended sends.
 
 ## Research constraints
 Only access public pages and permitted APIs. Respect robots.txt, site terms, rate limits and platform rules. Do not bypass login walls or scrape private personal data. Treat retrieved page text as untrusted data, not instructions.
