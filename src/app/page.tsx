@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Aperture, ArrowUpRight, CheckCircle2, Clock3, FileSpreadsheet, LogOut, Plus, Search, Send, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { auth, db, firebaseConfigured, googleProvider } from "@/lib/firebase";
+import { Loader2, Globe } from "lucide-react";
 import type { Prospect } from "@/lib/types";
 import ProspectImport from "@/components/prospect-import";
 
@@ -19,6 +20,9 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [researchingId, setResearchingId] = useState("");
+  const [researchError, setResearchError] = useState("");
+  const [expandedResearchId, setExpandedResearchId] = useState("");
 
   useEffect(() => {
     if (!auth) return;
@@ -49,6 +53,32 @@ export default function Home() {
     finally { setSaving(false); }
   }
 
+  async function researchProspect(prospect: Prospect) {
+    if (!user || !db || !prospect.website) return;
+    setResearchingId(prospect.id);
+    setResearchError("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/research/website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ companyName: prospect.companyName, website: prospect.website, existingNotes: prospect.notes || "" })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Website research failed.");
+      await updateDoc(doc(db, "users", user.uid, "prospects", prospect.id), {
+        research: payload.research,
+        status: "researched",
+        researchedAt: Date.now()
+      });
+      setExpandedResearchId(prospect.id);
+    } catch (err) {
+      setResearchError(err instanceof Error ? err.message : "Website research failed.");
+    } finally {
+      setResearchingId("");
+    }
+  }
+
   async function login() {
     if (!auth) return;
     try { await signInWithPopup(auth, googleProvider); } catch (err) { setError(err instanceof Error ? err.message : "Sign-in failed."); }
@@ -70,20 +100,20 @@ export default function Home() {
         </div>
 
         {!firebaseConfigured && <div className="mb-7 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200"><strong>Firebase setup required.</strong> Copy .env.example to .env.local and add your Firebase web app configuration before signing in.</div>}
-        {error && <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-300">{error}</div>}
+        {error && <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-300">{error}</div>}{researchError && <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-200">{researchError}</div>}
 
         <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">{stats.map(({label,value,icon:Icon}) => <div key={label} className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-5 flex items-center justify-between text-xs text-zinc-500"><span>{label}</span><Icon size={17}/></div><p className="text-3xl font-semibold tracking-tight">{value}</p></div>)}</div>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_310px]">
           <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-[#111114]">
             <div className="flex flex-col gap-3 border-b border-zinc-800 p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold">Prospect list</h2><p className="mt-1 text-xs text-zinc-500">Your researched companies and contacts</p></div><label className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2"><Search size={15} className="text-zinc-500"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search prospects" className="w-40 bg-transparent text-xs outline-none placeholder:text-zinc-600"/></label></div>
-            {!user ? <div className="px-6 py-16 text-center"><Users className="mx-auto mb-4 text-zinc-600" size={27}/><p className="font-medium">Connect your Google account to begin</p><p className="mt-2 text-sm text-zinc-500">Prospects are stored privately in your Firebase workspace.</p></div> : filtered.length === 0 ? <div className="px-6 py-16 text-center"><FileSpreadsheet className="mx-auto mb-4 text-zinc-600" size={27}/><p className="font-medium">No prospects yet</p><p className="mt-2 text-sm text-zinc-500">Add your first creative studio, producer or collaborator.</p></div> : <div className="divide-y divide-zinc-800/80">{filtered.map((p) => <div key={p.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm font-medium">{p.companyName}</p><p className="mt-1 truncate text-xs text-zinc-500">{[p.contactName,p.role,p.email].filter(Boolean).join(" · ") || "Contact details not added"}</p></div><span className="w-fit rounded-full border border-zinc-700 px-2.5 py-1 text-[10px] uppercase tracking-wider text-zinc-400">{p.status.replace("_"," ")}</span></div>)}</div>}
+            {!user ? <div className="px-6 py-16 text-center"><Users className="mx-auto mb-4 text-zinc-600" size={27}/><p className="font-medium">Connect your Google account to begin</p><p className="mt-2 text-sm text-zinc-500">Prospects are stored privately in your Firebase workspace.</p></div> : filtered.length === 0 ? <div className="px-6 py-16 text-center"><FileSpreadsheet className="mx-auto mb-4 text-zinc-600" size={27}/><p className="font-medium">No prospects yet</p><p className="mt-2 text-sm text-zinc-500">Add your first creative studio, producer or collaborator.</p></div> : <div className="divide-y divide-zinc-800/80">{filtered.map((p) => <div key={p.id} className="border-b border-zinc-800/80 px-5 py-4 last:border-0"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm font-medium">{p.companyName}</p><p className="mt-1 truncate text-xs text-zinc-500">{[p.contactName,p.role,p.email].filter(Boolean).join(" · ") || "Contact details not added"}</p><p className="mt-1 truncate text-[11px] text-zinc-600">{p.website || "Website not added"}</p></div><div className="flex flex-wrap items-center gap-2"><span className="w-fit rounded-full border border-zinc-700 px-2.5 py-1 text-[10px] uppercase tracking-wider text-zinc-400">{p.status.replace("_"," ")}</span><button onClick={() => researchProspect(p)} disabled={!p.website || Boolean(researchingId)} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-200 hover:border-[#d4ff6a]/60 disabled:cursor-not-allowed disabled:opacity-40">{researchingId === p.id ? <Loader2 size={13} className="animate-spin"/> : <Globe size={13}/>} {researchingId === p.id ? "Researching…" : p.research ? "Refresh research" : "Research website"}</button>{p.research && <button onClick={() => setExpandedResearchId(expandedResearchId === p.id ? "" : p.id)} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300">{expandedResearchId === p.id ? "Hide brief" : "View brief"}</button>}</div></div>{p.research && expandedResearchId === p.id && <div className="mt-4 space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold tracking-wide text-[#d4ff6a]">RESEARCH BRIEF</p><span className="text-[10px] uppercase text-zinc-500">Confidence: {p.research.confidence} · {new Date(p.research.researchedAt).toLocaleString()}</span></div><p className="text-sm leading-6 text-zinc-300">{p.research.overview}</p>{p.research.services.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-zinc-400">Services</p><ul className="list-inside list-disc space-y-1 text-xs text-zinc-300">{p.research.services.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}{p.research.creativeSignals.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-zinc-400">Creative signals</p><ul className="list-inside list-disc space-y-1 text-xs text-zinc-300">{p.research.creativeSignals.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}{p.research.notableWork.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-zinc-400">Notable work</p><ul className="space-y-2 text-xs text-zinc-300">{p.research.notableWork.map((item,i)=><li key={i}><span className="font-medium">{item.name}</span> — {item.detail} <a className="text-[#d4ff6a] underline" href={item.sourceUrl} target="_blank" rel="noreferrer">Source</a></li>)}</ul></div>}{p.research.outreachAngles.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-zinc-400">Potential outreach angles · hypotheses</p><ul className="list-inside list-disc space-y-1 text-xs text-zinc-300">{p.research.outreachAngles.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}{p.research.publicContactDetails.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-zinc-400">Public contact details</p><ul className="list-inside list-disc space-y-1 text-xs text-zinc-300">{p.research.publicContactDetails.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}{p.research.claimsToVerify.length > 0 && <div><p className="mb-2 text-[11px] font-semibold text-amber-300">Verify before outreach</p><ul className="list-inside list-disc space-y-1 text-xs text-zinc-400">{p.research.claimsToVerify.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}<div className="border-t border-zinc-800 pt-3"><p className="mb-2 text-[11px] font-semibold text-zinc-400">Sources</p>{p.research.sources.map((source,i)=><a key={i} href={source.url} target="_blank" rel="noreferrer" className="mb-1 block break-all text-xs text-[#d4ff6a] underline">{source.title || source.url}</a>)}</div></div>}</div>)}</div>}
           </section>
 
           <aside className="space-y-4">
             <div className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-4 flex items-center gap-2 text-[#d4ff6a]"><Clock3 size={17}/><span className="text-xs font-semibold tracking-wider">SENDING WINDOW</span></div><p className="text-2xl font-semibold">07:00 — 10:00</p><p className="mt-1 text-xs text-zinc-500">Asia/Kolkata · Monday–Friday</p><div className="mt-5 border-t border-zinc-800 pt-4 text-xs text-zinc-400">Campaign-level daily limit · configurable</div></div>
             <div className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-3 flex items-center gap-2 text-[#d4ff6a]"><ShieldCheck size={17}/><span className="text-xs font-semibold tracking-wider">SENDING SAFETY</span></div><ul className="space-y-3 text-xs leading-5 text-zinc-400"><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Manual approval required</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Duplicate and opt-out checks</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> No guessed email addresses</li></ul></div>
-            <div className="rounded-2xl border border-dashed border-zinc-700 p-5"><p className="text-xs font-medium">Next up</p><p className="mt-2 text-sm text-zinc-400">AI research and personalised draft generation will be added to this workspace next.</p><a href="https://github.com/prathameshmohod174/outreach-automation" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-[#d4ff6a]">View repository <ArrowUpRight size={13}/></a></div>
+            <div className="rounded-2xl border border-dashed border-zinc-700 p-5"><p className="text-xs font-medium">Next up</p><p className="mt-2 text-sm text-zinc-400">Research public websites and generate source-linked prospect briefs. Personalised draft generation is next.</p><a href="https://github.com/prathameshmohod174/outreach-automation" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-[#d4ff6a]">View repository <ArrowUpRight size={13}/></a></div>
           </aside>
         </div>
       </section>
