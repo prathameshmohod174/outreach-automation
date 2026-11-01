@@ -100,7 +100,21 @@ ${JSON.stringify(pages)}`;
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Research failed.";
-    const status = message.includes("token") || message.includes("Firebase") ? 401 : message.includes("Gemini") ? 503 : 400;
-    return NextResponse.json({ error: message }, { status });
+    const errorCode = typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+    // Log only the diagnostic code/message. Never log authorization headers,
+    // ID tokens, service-account JSON, API keys, or request bodies.
+    console.error("[research/website] Request failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      code: errorCode || "no-code",
+      message
+    });
+    const isAuthError =
+      message.toLowerCase().includes("token") ||
+      message.toLowerCase().includes("firebase") ||
+      errorCode.startsWith("auth/");
+    const status = isAuthError ? 401 : message.includes("Gemini") ? 503 : 400;
+    return NextResponse.json({ error: message, code: errorCode || undefined }, { status });
   }
 }
