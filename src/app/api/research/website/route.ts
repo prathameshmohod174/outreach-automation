@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
   try {
     const user = await verifyFirebaseToken(request.headers.get("authorization"));
     const input = schema.parse(await request.json());
-    const pages = await fetchPublicWebsite(input.website);
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Gemini is not configured on the server." }, { status: 503 });
+    const pages = await fetchPublicWebsite(input.website);
 
     const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
       model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
