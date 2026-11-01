@@ -48,10 +48,17 @@ function readServiceAccount() {
     );
   }
 
-  return serviceAccount as {
+  const account = serviceAccount as {
     project_id: string;
     client_email: string;
     private_key: string;
+  };
+
+  // Firebase Admin's cert() expects the SDK's camelCase ServiceAccount shape.
+  return {
+    projectId: account.project_id,
+    clientEmail: account.client_email,
+    privateKey: account.private_key,
   };
 }
 
