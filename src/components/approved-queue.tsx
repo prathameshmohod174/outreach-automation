@@ -34,7 +34,7 @@ export default function ApprovedQueue({ user }: { user: User }) {
         <Clock3 size={17}/>
         <span className="text-xs font-semibold tracking-wider">APPROVED SEND QUEUE</span>
       </div>
-      <p className="mb-3 text-xs leading-5 text-zinc-500">Approved emails are held here. Nothing is sent automatically yet.</p>
+      <p className="mb-3 text-xs leading-5 text-zinc-500">Approved emails wait here until you choose to send them. Manual sending still requires approval and respects your daily cap.</p>
       {error && <p className="text-xs text-red-300">{error}</p>}
       {!error && items.length === 0 && <p className="text-xs text-zinc-500">No approved emails in the queue.</p>}
       <div className="space-y-3">
