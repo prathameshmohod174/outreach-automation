@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
 function readServiceAccount() {
   const configured = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
@@ -58,6 +59,10 @@ function getAdminApp() {
   const existing = getApps().find((app) => app.name === "[DEFAULT]");
   if (existing) return existing;
   return initializeApp({ credential: cert(readServiceAccount()) });
+}
+
+export function adminDb() {
+  return getFirestore(getAdminApp());
 }
 
 export async function verifyFirebaseToken(authorization: string | null) {
