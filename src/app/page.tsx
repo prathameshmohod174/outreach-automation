@@ -97,7 +97,7 @@ export default function Home() {
     setResearchingId(prospect.id);
     setResearchError("");
     try {
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
       const response = await fetch("/api/research/website", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
