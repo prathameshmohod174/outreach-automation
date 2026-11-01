@@ -92,7 +92,7 @@ ${JSON.stringify(pages)}`;
         publicContactDetails: safeSources(raw.publicContactDetails),
         outreachAngles: safeSources(raw.outreachAngles),
         claimsToVerify: safeSources(raw.claimsToVerify),
-        confidence: ["high", "medium", "low"].includes(raw.confidence) ? raw.confidence : "low",
+        confidence: typeof raw.confidence === "string" && ["high", "medium", "low"].includes(raw.confidence) ? raw.confidence : "low",
         sources: pages.map((page) => ({ url: page.url, title: page.title, retrievedAt: new Date().toISOString() })),
         researchedAt: new Date().toISOString(),
         researchedBy: user.uid
