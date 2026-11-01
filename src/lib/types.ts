@@ -17,8 +17,8 @@ export type Prospect = {
 export type CampaignSettings = {
   name: string;
   timezone: "Asia/Kolkata";
-  windowStart: "07:00";
-  windowEnd: "10:00";
+  windowStart: string;
+  windowEnd: string;
   dailyLimit: number;
   sendingDays: number[];
 };
