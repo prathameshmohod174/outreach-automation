@@ -8,14 +8,17 @@ A campaign-based creative outreach workspace built with Next.js, Firebase and Ge
 - Research public company websites and create source-linked AI prospect briefs.
 - Generate personalised email drafts from saved prospect research and user-verified context.
 - Edit, save, approve or reject each draft in the prospect workspace.
-- Schedule approved emails between 07:00 and 10:00 Asia/Kolkata.
-- Enforce configurable daily campaign limits, duplicate checks and suppression lists.
+- Configure the scheduled sending window, weekdays and daily cap in Asia/Kolkata.
+- Manually send up to 10 already-approved queue items with an explicit confirmation; manual sending bypasses the time window but not the daily cap.
 - Export prospect and campaign data.
 
 ## Safety defaults
 - Email delivery is disabled until Gmail OAuth is configured.
 - No email can be sent without explicit approval.
-- Draft approval is a review state only; automated sending is not implemented.
+- Every prospect email must be explicitly approved before delivery.
+- Manual delivery is user-triggered; no unattended scheduler is included yet.
+- The manual sender re-checks the prospect's approved status, approved subject/body snapshot and recipient before sending.
+- Daily send attempts are capped using the saved campaign limit (default 5); failed attempts count toward the cap.
 - Editing a draft invalidates its approval.
 - Unknown contact details remain blank; never invent email addresses.
 - Respect opt-outs and suppression lists.
