@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,5 +8,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <footer className="border-t border-zinc-800/80">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+            <span>Outreach OS · Creative partnerships workspace</span>
+            <nav aria-label="Legal" className="flex gap-5">
+              <Link className="transition hover:text-[#d4ff6a]" href="/privacy">Privacy Policy</Link>
+              <Link className="transition hover:text-[#d4ff6a]" href="/terms">Terms of Service</Link>
+            </nav>
+          </div>
+        </footer>
+      </body>
+    </html>
+  );
 }
