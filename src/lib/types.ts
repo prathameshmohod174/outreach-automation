@@ -11,6 +11,8 @@ export type Prospect = {
   notes?: string;
   status: ProspectStatus;
   createdAt: number;
+  research?: ProspectResearch;
+  draft?: ProspectDraft;
 };
 export type CampaignSettings = {
   name: string;
@@ -19,4 +21,29 @@ export type CampaignSettings = {
   windowEnd: "10:00";
   dailyLimit: number;
   sendingDays: number[];
+};
+
+export type ProspectResearch = {
+  overview: string;
+  services: string[];
+  creativeSignals: string[];
+  notableWork: { name: string; detail: string; sourceUrl: string }[];
+  publicContactDetails: string[];
+  outreachAngles: string[];
+  claimsToVerify: string[];
+  confidence: "high" | "medium" | "low";
+  sources: { url: string; title: string; retrievedAt: string }[];
+  researchedAt: string;
+  researchedBy: string;
+};
+
+export type ProspectDraft = {
+  subject: string;
+  body: string;
+  personalisationBasis: string[];
+  claimsToVerify: string[];
+  status: "draft" | "approved" | "rejected";
+  generatedAt: string;
+  approvedAt?: string;
+  editedAt?: string;
 };

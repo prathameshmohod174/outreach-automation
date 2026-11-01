@@ -5,6 +5,9 @@
 - Firebase Google sign-in (client SDK)
 - User-scoped Firestore prospect records and security rules
 - Manual prospect intake
+- CSV/XLS/XLSX import with column alias mapping, preview, email validation and duplicate screening
+- Authenticated public-website research with same-origin page discovery, source URLs and AI-generated prospect briefs
+- Gemini email draft generation with editable subject/body and explicit save, approve or reject actions
 - Server-side Gemini draft endpoint with Firebase ID-token verification
 - Email sending hard-disabled
 
@@ -27,8 +30,7 @@ All records are scoped beneath users/{uid}.
 8. Honour opt-outs and maintain a suppression list.
 
 ## Next milestones
-1. CSV/XLSX import, research queue and source-backed enrichment.
-2. Draft review/editor, approve/reject actions and Firestore audit trail.
+1. Draft review/editor, approve/reject actions and Firestore audit trail.
 3. Campaign creation and configurable sending limits.
 4. Gmail OAuth, delivery worker, unsubscribe and bounce handling.
 5. Analytics and deployment.

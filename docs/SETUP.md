@@ -21,15 +21,19 @@ Fill in the Firebase web configuration values in `.env.local`.
 5. Create a Firestore database.
 6. Publish the repository's `firestore.rules` in Firestore Rules.
 
-## 4. Run
+## 4. Prospect imports
+The dashboard accepts CSV, XLSX and XLS files up to 5 MB and 250 data rows. The first worksheet is read in the browser. Use the downloadable CSV template for the most predictable column mapping. Recognised fields include company/studio, website, contact, role, email, Instagram, LinkedIn and notes. Duplicate rows and malformed email addresses are excluded from the import preview.
+
+## 5. Run
 ```bash
 npm run dev
 ```
 
 Open http://localhost:3000.
 
-## 5. Gemini (next milestone)
+## 6. Website research
+Add the Firebase Admin service-account base64 value and server-side `GEMINI_API_KEY` to the deployed environment. Sign in, add a prospect with a public website URL, then select **Research website**. The server reads the homepage and up to three relevant same-origin pages, extracts visible text, and asks Gemini to produce a source-linked brief. The website fetcher rejects local/private network addresses, limits response size and time, and does not crawl social profiles or login-protected pages. Research is stored in that user's prospect document.\n\n## 7. Gemini draft generation
 Set `GEMINI_API_KEY` on the server only. Do not expose it through a `NEXT_PUBLIC_` variable. Draft generation must use source notes and must not invent personal details or email addresses.
 
-## 6. Email delivery (not enabled yet)
+## 8. Email delivery (not enabled yet)
 Gmail OAuth, sending, queue workers, bounce processing and unsubscribe handling are deliberately not part of this first scaffold. Keep `EMAIL_SENDING_ENABLED=false` until those controls are implemented and tested.
