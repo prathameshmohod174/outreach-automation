@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { addDoc, collection } from "firebase/firestore";
+import { collection, doc, writeBatch } from "firebase/firestore";
 import * as XLSX from "xlsx";
 import { AlertCircle, CheckCircle2, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -133,6 +133,7 @@ export default function ProspectImport({ userId, existingProspects, onClose, onI
     try {
       const parsed = await parseRows(file);
       if (!parsed.length) throw new Error("No data rows found in the first worksheet.");
+      if (parsed.length > 250) throw new Error("This import contains more than 250 rows. Split it into smaller files to keep imports reliable.");
       if (!parsed.some((row) => row.companyName)) throw new Error("A company column is required. Try: Company, Company Name or Studio.");
       setRows(parsed);
       setFileName(file.name);
@@ -149,9 +150,10 @@ export default function ProspectImport({ userId, existingProspects, onClose, onI
     setFileError("");
     try {
       const target = collection(db, "users", userId, "prospects");
-      for (let i = 0; i < analysis.valid.length; i += 1) {
-        const row = analysis.valid[i];
-        await addDoc(target, {
+      const batch = writeBatch(db);
+      for (const row of analysis.valid) {
+        const reference = doc(target);
+        batch.set(reference, {
           companyName: row.companyName.slice(0, 200),
           website: row.website,
           contactName: row.contactName,
@@ -166,6 +168,7 @@ export default function ProspectImport({ userId, existingProspects, onClose, onI
           importedAt: Date.now()
         });
       }
+      await batch.commit();
       setResult(`Imported ${analysis.valid.length} prospect${analysis.valid.length === 1 ? "" : "s"} successfully.`);
       onImported();
       setRows([]);
@@ -187,7 +190,7 @@ export default function ProspectImport({ userId, existingProspects, onClose, onI
         <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/60 px-5 py-8 text-center hover:border-[#d4ff6a]/60">
           <Upload size={22} className="mb-3 text-[#d4ff6a]"/>
           <span className="text-sm font-medium">{fileName || "Choose a CSV or Excel file"}</span>
-          <span className="mt-1 text-xs text-zinc-500">CSV, XLSX or XLS · up to 5 MB · first worksheet only</span>
+          <span className="mt-1 text-xs text-zinc-500">CSV, XLSX or XLS · up to 5 MB / 250 rows · first worksheet only</span>
           <input type="file" accept=".csv,.xlsx,.xls,text/csv" className="sr-only" onChange={(e) => chooseFile(e.target.files?.[0])}/>
         </label>
         <div className="mt-4 rounded-lg border border-zinc-800 p-4">
