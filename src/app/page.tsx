@@ -8,6 +8,7 @@ import { auth, db, firebaseConfigured, googleProvider } from "@/lib/firebase";
 import type { Prospect } from "@/lib/types";
 import ProspectImport from "@/components/prospect-import";
 import GmailConnection from "@/components/gmail-connection";
+import ApprovedQueue from "@/components/approved-queue";
 
 const initialForm = { companyName: "", website: "", contactName: "", role: "", email: "", instagram: "", linkedin: "", notes: "" };
 
@@ -193,17 +194,27 @@ export default function Home() {
     setDraftBusy(true);
     setDraftError("");
     try {
-      await updateDoc(doc(db, "users", user.uid, "prospects", prospect.id), {
-        draft: {
-          ...(prospect.draft || {}),
-          subject: draftSubject.trim(),
-          body: draftBody.trim(),
-          status,
-          editedAt: new Date().toISOString(),
-          ...(status === "approved" ? { approvedAt: new Date().toISOString() } : {})
-        },
-        status: status === "approved" ? "approved" : status === "rejected" ? "rejected" : "draft_ready"
-      });
+      if (status === "approved") {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/queue/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ prospectId: prospect.id, subject: draftSubject.trim(), body: draftBody.trim() })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Could not approve and queue this email.");
+      } else {
+        await updateDoc(doc(db, "users", user.uid, "prospects", prospect.id), {
+          draft: {
+            ...(prospect.draft || {}),
+            subject: draftSubject.trim(),
+            body: draftBody.trim(),
+            status,
+            editedAt: new Date().toISOString()
+          },
+          status: status === "rejected" ? "rejected" : "draft_ready"
+        });
+      }
       if (status !== "draft") setDraftingId("");
     } catch (err) {
       setDraftError(err instanceof Error ? err.message : "Could not save draft.");
@@ -244,7 +255,7 @@ export default function Home() {
           </section>
 
           <aside className="space-y-4">
-            {user && <GmailConnection user={user}/> }
+            {user && <GmailConnection user={user}/> }\n            {user && <ApprovedQueue user={user}/> }
             <div className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-4 flex items-center gap-2 text-[#d4ff6a]"><Clock3 size={17}/><span className="text-xs font-semibold tracking-wider">SENDING WINDOW</span></div><p className="text-2xl font-semibold">07:00 — 10:00</p><p className="mt-1 text-xs text-zinc-500">Asia/Kolkata · Monday–Friday</p><div className="mt-5 border-t border-zinc-800 pt-4 text-xs text-zinc-400">Campaign-level daily limit · configurable</div></div>
             <div className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-3 flex items-center gap-2 text-[#d4ff6a]"><ShieldCheck size={17}/><span className="text-xs font-semibold tracking-wider">SENDING SAFETY</span></div><ul className="space-y-3 text-xs leading-5 text-zinc-400"><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Manual approval required</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Duplicate and opt-out checks</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> No guessed email addresses</li></ul></div>
             <div className="rounded-2xl border border-dashed border-zinc-700 p-5"><p className="text-xs font-medium">Next up</p><p className="mt-2 text-sm text-zinc-400">Research public websites and generate source-linked prospect briefs. Personalised draft generation is next.</p><a href="https://github.com/prathameshmohod174/outreach-automation" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-[#d4ff6a]">View repository <ArrowUpRight size={13}/></a></div>
