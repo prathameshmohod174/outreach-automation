@@ -133,9 +133,6 @@ export default function ProspectImport({ userId, existingProspects, onClose, onI
     try {
       const parsed = await parseRows(file);
       if (!parsed.length) throw new Error("No data rows found in the first worksheet.");
-      if (!Object.values(aliases).some((options) => Object.keys(parsed[0]).some((key) => options.includes(normaliseHeader(key))))) {
-        throw new Error("Could not recognise the column headers. Use a Company, Studio or Company Name column.");
-      }
       if (!parsed.some((row) => row.companyName)) throw new Error("A company column is required. Try: Company, Company Name or Studio.");
       setRows(parsed);
       setFileName(file.name);
