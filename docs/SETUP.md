@@ -22,7 +22,7 @@ Fill in the Firebase web configuration values in `.env.local`.
 6. Publish the repository's `firestore.rules` in Firestore Rules.
 
 ## 4. Prospect imports
-The dashboard accepts CSV, XLSX and XLS files up to 5 MB. The first worksheet is read in the browser. Use the downloadable CSV template for the most predictable column mapping. Recognised fields include company/studio, website, contact, role, email, Instagram, LinkedIn and notes. Duplicate rows and malformed email addresses are excluded from the import preview.
+The dashboard accepts CSV, XLSX and XLS files up to 5 MB and 250 data rows. The first worksheet is read in the browser. Use the downloadable CSV template for the most predictable column mapping. Recognised fields include company/studio, website, contact, role, email, Instagram, LinkedIn and notes. Duplicate rows and malformed email addresses are excluded from the import preview.
 
 ## 5. Run
 ```bash
