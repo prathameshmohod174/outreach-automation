@@ -8,15 +8,18 @@ function isPublicIPv4(ip: string) {
   const parts = ip.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
   const [a,b] = parts;
+  const [c] = parts.slice(2);
   return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127) || (a === 198 && (b === 18 || b === 19)));
+    (a === 172 && b >= 16 && b <= 31) || (a === 192 && (b === 0 || b === 2 || b === 168)) ||
+    (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
+    (a === 203 && b === 0 && c === 113) ||
+    (a === 100 && b >= 64 && b <= 127));
 }
 
 function isPublicIPv6(ip: string) {
   const value = ip.toLowerCase().split("%")[0];
   // Only globally routable unicast IPv6 space is allowed.
-  return value.startsWith("2") || value.startsWith("3");
+  return (value.startsWith("2") || value.startsWith("3")) && !value.startsWith("2001:db8:");
 }
 
 async function assertPublicHost(hostname: string) {
