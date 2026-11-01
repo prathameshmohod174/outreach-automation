@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Outreach OS",
@@ -44,7 +45,7 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen">
       <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
-        <a href="/" className="text-xs font-semibold tracking-[.2em] text-[#d4ff6a] hover:underline">← OUTREACH OS</a>
+        <Link href="/" className="text-xs font-semibold tracking-[.2em] text-[#d4ff6a] hover:underline">← OUTREACH OS</Link>
         <p className="mt-12 text-[11px] font-semibold tracking-[.25em] text-[#d4ff6a]">LEGAL / TERMS</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Terms of Service</h1>
         <p className="mt-4 text-sm text-zinc-500">Effective date: 2 November 2026</p>
