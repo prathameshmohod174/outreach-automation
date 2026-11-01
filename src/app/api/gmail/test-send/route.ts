@@ -34,19 +34,22 @@ export async function POST(request: NextRequest) {
 
     const dateKey = istDateKey();
     const usageRef = db.doc(`users/${user.uid}/gmailUsage/${dateKey}`);
-    const usageSnapshot = await usageRef.get();
-    const testAttempts = Number(usageSnapshot.data()?.testAttempts || 0);
-    if (testAttempts >= 3) {
-      return NextResponse.json({ error: "The limit of 3 Gmail test messages per IST calendar day has been reached." }, { status: 429 });
-    }
-    await usageRef.set({
-      testAttempts: FieldValue.increment(1),
-      estimatedQuotaUnits: FieldValue.increment(100),
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
-
     const refreshToken = decryptRefreshToken(data.token as { ciphertext: string; iv: string; tag: string });
     const accessToken = await getGmailAccessToken(refreshToken);
+    const reservation = await db.runTransaction(async (transaction) => {
+      const usageSnapshot = await transaction.get(usageRef);
+      const testAttempts = Number(usageSnapshot.data()?.testAttempts || 0);
+      if (testAttempts >= 3) return false;
+      transaction.set(usageRef, {
+        testAttempts: FieldValue.increment(1),
+        estimatedQuotaUnits: FieldValue.increment(100),
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      return true;
+    });
+    if (!reservation) {
+      return NextResponse.json({ error: "The limit of 3 Gmail test messages per IST calendar day has been reached." }, { status: 429 });
+    }
     const subject = "Outreach OS — Gmail connection test";
     const body = [
       "Your Gmail API connection is working.",
