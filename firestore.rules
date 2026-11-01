@@ -17,7 +17,7 @@ service cloud.firestore {
         && request.resource.data.status in ['new', 'researched', 'draft_ready', 'approved', 'rejected', 'sent', 'suppressed'];
     }
 
-    match /users/{userId}/campaigns/{campaignId} {
+    match /users/{userId}/sendQueue/{queueItemId} {\n      allow read: if ownsUser(userId);\n      allow write: if false;\n    }\n\n    match /users/{userId}/campaigns/{campaignId} {
       allow read, write: if ownsUser(userId);
     }
     match /users/{userId}/drafts/{draftId} {
