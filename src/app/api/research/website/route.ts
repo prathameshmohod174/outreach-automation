@@ -7,7 +7,10 @@ import { fetchPublicWebsite } from "@/lib/public-website";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function parseModelJson(text: string): Record<string, unknown> {
+function parseModelJson(text: unknown): Record<string, unknown> {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("The research model returned an empty or non-text response. Please try again.");
+  }
   const cleaned = text
     .replace(/^\uFEFF/, "")
     .replace(/```(?:json)?/gi, "")
