@@ -58,13 +58,13 @@ export async function POST(request: NextRequest) {
         const item = claim.item;
         const raw = [
           `To: ${item.recipient}`,
-          `Subject: ${String(item.subject).replace(/[\\r\\n]/g, " ")}`,
+          `Subject: ${String(item.subject).replace(/[\r\n]/g, " ")}`,
           "MIME-Version: 1.0",
           'Content-Type: text/plain; charset="UTF-8"',
           "Content-Transfer-Encoding: 8bit",
           "",
-          String(item.body).replace(/\\r?\\n/g, "\\r\\n")
-        ].join("\\r\\n");
+          String(item.body).replace(/\r?\n/g, "\r\n")
+        ].join("\r\n");
         const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
