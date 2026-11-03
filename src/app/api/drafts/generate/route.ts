@@ -5,10 +5,18 @@ import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
-const MAX_GEMINI_RETRIES = 3;
+const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
 
-function getGeminiStatus(error: unknown): number | undefined {
+class ProviderError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = "ProviderError";
+  }
+}
+
+function statusFromError(error: unknown): number | undefined {
+  if (error instanceof ProviderError) return error.status;
   if (!error || typeof error !== "object") return undefined;
   const value = error as { status?: unknown; statusCode?: unknown; response?: { status?: unknown }; message?: unknown };
   for (const candidate of [value.status, value.statusCode, value.response?.status]) {
@@ -21,24 +29,23 @@ function getGeminiStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-function isTransientGeminiError(error: unknown): boolean {
-  const status = getGeminiStatus(error);
-  if (status !== undefined) return [429, 500, 502, 503, 504].includes(status);
+function isTransientError(error: unknown): boolean {
+  const status = statusFromError(error);
+  if (status !== undefined) return [408, 429, 500, 502, 503, 504].includes(status);
   const message = error instanceof Error ? error.message : String(error);
-  return /fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
+  return /fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|aborted/i.test(message);
 }
 
-async function generateWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
-      if (!isTransientGeminiError(error) || attempt >= MAX_GEMINI_RETRIES) throw error;
+      if (!isTransientError(error) || attempt >= MAX_RETRIES) throw error;
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 8_000));
     }
   }
 }
-
 
 const requestSchema = z.object({
   companyName: z.string().min(1).max(200),
@@ -52,20 +59,7 @@ const requestSchema = z.object({
   portfolioUrl: z.string().url().optional().or(z.literal(""))
 });
 
-export async function POST(request: NextRequest) {
-  try {
-    await verifyFirebaseToken(request.headers.get("authorization"));
-    const input = requestSchema.parse(await request.json());
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "Gemini is not configured on the server." }, { status: 503 });
-
-    const ai = new GoogleGenerativeAI(apiKey);
-    const model = ai.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json", temperature: 0.65 }
-    });
-
-    const prompt = `You are an expert B2B email copywriter specializing in professional creative-industry outreach.
+const promptInstructions = `You are an expert B2B email copywriter specializing in professional creative-industry outreach.
 
 Your task is to write personalized, human-sounding cold emails for a freelance cinematographer, videographer, and video editor operating under the creative brand Random Hours.
 
@@ -114,36 +108,145 @@ Factual constraints:
 - Do not claim to have watched, loved, admired, or worked on anything unless the supplied information supports that statement.
 - If there is not enough verified information for a specific personal reference, do not fabricate one. Keep the draft conservative and flag the missing evidence in claims_to_verify.
 - Use the sender name, role, and portfolio URL supplied in the input. Never add a second link.
-- The subject and body are the only user-facing copy. Return the existing JSON response structure for the application, with personalisation_basis and claims_to_verify as concise internal review metadata.
+- The subject and body are the only user-facing copy. Return JSON with subject, body, personalisation_basis, and claims_to_verify. Keep the two metadata arrays concise and internal to the application.`;
+
+const outputSchema = {
+  type: "object",
+  properties: {
+    subject: { type: "string" },
+    body: { type: "string" },
+    personalisation_basis: { type: "array", items: { type: "string" } },
+    claims_to_verify: { type: "array", items: { type: "string" } }
+  },
+  required: ["subject", "body", "personalisation_basis", "claims_to_verify"],
+  additionalProperties: false
+};
+
+async function generateWithGroq(prompt: string, apiKey: string): Promise<string> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+      messages: [
+        { role: "system", content: "You write accurate, concise creative-industry outreach emails. Follow the supplied instructions and return only the requested JSON object." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.65,
+      reasoning_effort: "low",
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "creative_outreach_draft",
+          strict: true,
+          schema: outputSchema
+        }
+      }
+    }),
+    signal: AbortSignal.timeout(45_000)
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ProviderError(`Groq request failed (HTTP ${response.status}). ${detail.slice(0, 500)}`, response.status);
+  }
+
+  const payload = await response.json() as {
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content) throw new ProviderError("Groq returned an empty draft.");
+  return content;
+}
+
+async function generateWithGemini(prompt: string, apiKey: string): Promise<string> {
+  const ai = new GoogleGenerativeAI(apiKey);
+  const model = ai.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    generationConfig: { responseMimeType: "application/json", temperature: 0.65 }
+  });
+  const result = await withRetry(() => model.generateContent(prompt));
+  return result.response.text();
+}
+
+function parseDraft(content: string) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new ProviderError("The AI provider returned invalid JSON.");
+  }
+  const schema = z.object({
+    subject: z.string().min(1),
+    body: z.string().min(1),
+    personalisation_basis: z.array(z.string()).optional().default([]),
+    claims_to_verify: z.array(z.string()).optional().default([])
+  });
+  return schema.parse(parsed);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    await verifyFirebaseToken(request.headers.get("authorization"));
+    const input = requestSchema.parse(await request.json());
+    const prompt = `${promptInstructions}
 
 Prospect details:
 ${JSON.stringify(input)}`;
 
-    const result = await generateWithRetry(() => model.generateContent(prompt));
-    const parsed = JSON.parse(result.response.text());
-    if (typeof parsed.subject !== "string" || typeof parsed.body !== "string") {
-      return NextResponse.json({ error: "The AI returned an invalid draft." }, { status: 502 });
+    const groqKey = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!groqKey && !geminiKey) {
+      return NextResponse.json({ error: "No AI provider is configured. Add GROQ_API_KEY or GEMINI_API_KEY in the server environment." }, { status: 503 });
     }
+
+    let content: string;
+    let provider: "groq" | "gemini";
+
+    if (groqKey) {
+      try {
+        content = await withRetry(() => generateWithGroq(prompt, groqKey));
+        provider = "groq";
+      } catch (groqError) {
+        if (!geminiKey || !isTransientError(groqError)) throw groqError;
+        content = await generateWithGemini(prompt, geminiKey);
+        provider = "gemini";
+      }
+    } else {
+      content = await generateWithGemini(prompt, geminiKey!);
+      provider = "gemini";
+    }
+
+    const parsed = parseDraft(content);
     return NextResponse.json({
       subject: parsed.subject.slice(0, 180),
       body: parsed.body.slice(0, 5000),
-      personalisationBasis: Array.isArray(parsed.personalisation_basis) ? parsed.personalisation_basis : [],
-      claimsToVerify: Array.isArray(parsed.claims_to_verify) ? parsed.claims_to_verify : [],
-      approvalRequired: true
+      personalisationBasis: parsed.personalisation_basis,
+      claimsToVerify: parsed.claims_to_verify,
+      approvalRequired: true,
+      provider
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Draft generation failed.";
-    const geminiStatus = getGeminiStatus(error);
-    if (isTransientGeminiError(error)) {
+    const status = statusFromError(error);
+    if (isTransientError(error)) {
       return NextResponse.json(
-        { error: "Gemini is temporarily busy or unreachable. We retried automatically; please try generating the draft again in a moment." },
+        { error: "The AI provider is temporarily busy or unreachable. Automatic retries have been attempted; please try again shortly." },
         { status: 503, headers: { "Retry-After": "10" } }
       );
     }
-    if (geminiStatus !== undefined || message.includes("GoogleGenerativeAI")) {
-      return NextResponse.json({ error: "Gemini could not generate this draft. Please try again shortly." }, { status: 502 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "The AI returned a draft in an unexpected format. Please try again." }, { status: 502 });
     }
-    const status = message.includes("token") || message.includes("Firebase") ? 401 : error instanceof z.ZodError ? 400 : 500;
-    return NextResponse.json({ error: status === 500 ? "Draft generation failed due to a server error." : message }, { status });
+    if (status !== undefined) {
+      return NextResponse.json({ error: "The AI provider rejected the request. Check the provider API key, model name, and account limits." }, { status: status >= 400 && status < 500 ? 502 : 503 });
+    }
+    const message = error instanceof Error ? error.message : "Draft generation failed.";
+    if (message.includes("token") || message.includes("Firebase")) {
+      return NextResponse.json({ error: message }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Draft generation failed due to a server error." }, { status: 500 });
   }
 }
