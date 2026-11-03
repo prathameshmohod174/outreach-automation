@@ -6,6 +6,41 @@ import { DEFAULT_WRITING_VOICE } from "@/lib/writing-voice";
 
 export const runtime = "nodejs";
 
+const MAX_GEMINI_RETRIES = 3;
+const RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
+
+function getGeminiStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const value = error as { status?: unknown; statusCode?: unknown; response?: { status?: unknown }; message?: unknown };
+  for (const candidate of [value.status, value.statusCode, value.response?.status]) {
+    if (typeof candidate === "number") return candidate;
+  }
+  if (typeof value.message === "string") {
+    const match = value.message.match(/\[(\d{3})\]/);
+    if (match) return Number(match[1]);
+  }
+  return undefined;
+}
+
+function isTransientGeminiError(error: unknown): boolean {
+  const status = getGeminiStatus(error);
+  if (status !== undefined) return [429, 500, 502, 503, 504].includes(status);
+  const message = error instanceof Error ? error.message : String(error);
+  return /fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
+}
+
+async function generateWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isTransientGeminiError(error) || attempt >= MAX_GEMINI_RETRIES) throw error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 8_000));
+    }
+  }
+}
+
+
 const requestSchema = z.object({
   companyName: z.string().min(1).max(200),
   contactName: z.string().max(160).optional(),
@@ -53,7 +88,7 @@ Rules:
 Prospect details:
 ${JSON.stringify(input)}`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     const parsed = JSON.parse(result.response.text());
     if (typeof parsed.subject !== "string" || typeof parsed.body !== "string") {
       return NextResponse.json({ error: "The AI returned an invalid draft." }, { status: 502 });
@@ -67,7 +102,17 @@ ${JSON.stringify(input)}`;
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Draft generation failed.";
-    const status = message.includes("token") || message.includes("Firebase") ? 401 : 400;
-    return NextResponse.json({ error: message }, { status });
+    const geminiStatus = getGeminiStatus(error);
+    if (isTransientGeminiError(error)) {
+      return NextResponse.json(
+        { error: "Gemini is temporarily busy or unreachable. We retried automatically; please try generating the draft again in a moment." },
+        { status: 503, headers: { "Retry-After": "10" } }
+      );
+    }
+    if (geminiStatus !== undefined || message.includes("GoogleGenerativeAI")) {
+      return NextResponse.json({ error: "Gemini could not generate this draft. Please try again shortly." }, { status: 502 });
+    }
+    const status = message.includes("token") || message.includes("Firebase") ? 401 : error instanceof z.ZodError ? 400 : 500;
+    return NextResponse.json({ error: status === 500 ? "Draft generation failed due to a server error." : message }, { status });
   }
 }
