@@ -29,13 +29,13 @@ function isTransientGeminiError(error: unknown): boolean {
   return /fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
 }
 
-async function generateWithRetry(model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>, prompt: string) {
+async function generateWithRetry<T>(operation: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await model.generateContent(prompt);
+      return await operation();
     } catch (error) {
       if (!isTransientGeminiError(error) || attempt >= MAX_GEMINI_RETRIES) throw error;
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 8_000));
     }
   }
 }
@@ -88,7 +88,7 @@ Rules:
 Prospect details:
 ${JSON.stringify(input)}`;
 
-    const result = await generateWithRetry(model, prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     const parsed = JSON.parse(result.response.text());
     if (typeof parsed.subject !== "string" || typeof parsed.body !== "string") {
       return NextResponse.json({ error: "The AI returned an invalid draft." }, { status: 502 });
