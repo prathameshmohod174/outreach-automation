@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { adminDb, verifyFirebaseToken } from "@/lib/firebase-admin";
+import { DEFAULT_WRITING_VOICE } from "@/lib/writing-voice";
 
 export const runtime = "nodejs";
 
@@ -19,8 +20,10 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await verifyFirebaseToken(request.headers.get("authorization"));
+    const user = await verifyFirebaseToken(request.headers.get("authorization"));
     const input = requestSchema.parse(await request.json());
+    const voiceSnapshot = await adminDb().doc(`users/${user.uid}/settings/writingVoice`).get();
+    const writingVoice = voiceSnapshot.exists ? voiceSnapshot.data() : DEFAULT_WRITING_VOICE;
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Gemini is not configured on the server." }, { status: 503 });
 
@@ -40,7 +43,7 @@ Rules:
 - Refer to specific work or creative characteristics only when the notes support them.
 - Never claim the sender watched, loved, admired or worked on something unless the input explicitly says so.
 - Do not invent contact details, job openings, mutual connections, budgets or prior conversations.
-- Write naturally, specifically and respectfully; 90-150 words maximum.
+- Write naturally, specifically and respectfully. Follow the supplied sender voice profile for tone, rhythm, vocabulary and length. Do not imitate a generic marketing template.
 - Make a clear, low-pressure proposal for a conversation or relevant collaboration.
 - Avoid mass-mailing language, exaggerated praise, fake familiarity or generic flattery.
 - If evidence is insufficient, say so in claims_to_verify and write a conservative draft.
