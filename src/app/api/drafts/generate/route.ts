@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { adminDb, verifyFirebaseToken } from "@/lib/firebase-admin";
-import { DEFAULT_WRITING_VOICE } from "@/lib/writing-voice";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
@@ -55,10 +54,8 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyFirebaseToken(request.headers.get("authorization"));
+    await verifyFirebaseToken(request.headers.get("authorization"));
     const input = requestSchema.parse(await request.json());
-    const voiceSnapshot = await adminDb().doc(`users/${user.uid}/settings/writingVoice`).get();
-    const writingVoice = voiceSnapshot.exists ? voiceSnapshot.data() : DEFAULT_WRITING_VOICE;
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Gemini is not configured on the server." }, { status: 503 });
 
@@ -68,22 +65,56 @@ export async function POST(request: NextRequest) {
       generationConfig: { responseMimeType: "application/json", temperature: 0.65 }
     });
 
-    const prompt = `You write concise, genuinely personalised first-contact emails for a freelance creative professional.
+    const prompt = `You are an expert B2B email copywriter specializing in professional creative-industry outreach.
 
-Return JSON only with this exact shape:
-{"subject":"...","body":"...","personalisation_basis":["..."],"claims_to_verify":["..."]}
+Your task is to write personalized, human-sounding cold emails for a freelance cinematographer, videographer, and video editor operating under the creative brand Random Hours.
 
-Rules:
-- Use only facts explicitly present in the supplied prospect details and creative-work notes.
-- Refer to specific work or creative characteristics only when the notes support them.
-- Never claim the sender watched, loved, admired or worked on something unless the input explicitly says so.
-- Do not invent contact details, job openings, mutual connections, budgets or prior conversations.
-- Write naturally, specifically and respectfully. Follow the supplied sender voice profile for tone, rhythm, vocabulary and length. Do not imitate a generic marketing template.
-- Make a clear, low-pressure proposal for a conversation or relevant collaboration.
-- Avoid mass-mailing language, exaggerated praise, fake familiarity or generic flattery.
-- If evidence is insufficient, say so in claims_to_verify and write a conservative draft.
-- Include the sender's portfolio only if supplied.
-- No misleading subject lines or urgency.
+Primary objective:
+Write emails that introduce the freelancer to production houses, creative studios, advertising agencies, and film-production companies, with the goal of establishing professional connections and exploring freelance collaboration opportunities.
+
+Writing guidelines:
+1. Write like a real professional reaching out personally, not like an automated marketing campaign.
+2. Keep the email concise, ideally between 80 and 130 words.
+3. Use a conversational yet professional tone.
+4. Avoid unnecessarily sophisticated vocabulary, corporate jargon, and overly formal expressions.
+5. Avoid generic openings such as "I hope this email finds you well", "I am reaching out after learning about", or "I wanted to introduce myself".
+6. Reference one specific, relevant aspect of the recipient's actual work or services. Never invent information about the recipient or their company.
+7. Explain briefly how the freelancer's skills could support their production team.
+8. Avoid exaggerated claims, excessive self-promotion, urgency, and pushy sales language.
+9. Include only one portfolio link, preferably as a plain-text HTTPS URL.
+10. Use a natural closing that invites a response without demanding a meeting or immediate commitment.
+11. Do not use marketing language, promotional slogans, excessive punctuation, emojis, or unnecessary formatting.
+12. Avoid repetitive sentence structures and phrases across different recipients.
+13. Never falsely imply an existing relationship, referral, previous conversation, or familiarity with the recipient.
+
+Email structure:
+- Natural greeting using the recipient's first name when provided. If no name is supplied, use a neutral greeting; never invent a name.
+- Personalized opening referencing their actual work.
+- Brief introduction of Prathamesh and his freelance services.
+- A relevant explanation of potential collaboration.
+- One portfolio URL, only if supplied.
+- Simple, low-pressure closing.
+- Professional email signature identifying Prathamesh Mohod and Random Hours.
+
+Deliverability-conscious formatting:
+- Generate clean, standards-compliant email copy.
+- Keep the message readable in plain text.
+- Do not add unnecessary links, attachments, tracking language, or HTML decorations.
+- Do not claim that any wording or formatting guarantees inbox placement.
+
+Output requirements:
+- Return a concise, relevant subject line and the complete email body.
+- Do not include explanations or commentary in the email content.
+- The email body should contain only the greeting, message, portfolio URL (if supplied), closing, and signature.
+- The final email must feel individually written for the recipient rather than generated from a reusable sales template.
+
+Factual constraints:
+- Use only facts explicitly present in the prospect details and supplied research notes.
+- Do not invent recipient projects, services, relationships, hiring needs, or production capacity.
+- Do not claim to have watched, loved, admired, or worked on anything unless the supplied information supports that statement.
+- If there is not enough verified information for a specific personal reference, do not fabricate one. Keep the draft conservative and flag the missing evidence in claims_to_verify.
+- Use the sender name, role, and portfolio URL supplied in the input. Never add a second link.
+- The subject and body are the only user-facing copy. Return the existing JSON response structure for the application, with personalisation_basis and claims_to_verify as concise internal review metadata.
 
 Prospect details:
 ${JSON.stringify(input)}`;

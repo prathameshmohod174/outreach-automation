@@ -10,7 +10,6 @@ import ProspectImport from "@/components/prospect-import";
 import GmailConnection from "@/components/gmail-connection";
 import ApprovedQueue from "@/components/approved-queue";
 import SendingControls from "@/components/sending-controls";
-import WritingVoice from "@/components/writing-voice";
 
 const initialForm = { companyName: "", website: "", contactName: "", role: "", email: "", instagram: "", linkedin: "", notes: "" };
 
@@ -259,7 +258,6 @@ export default function Home() {
           <aside className="space-y-4">
             {user && <GmailConnection user={user}/> }\n            {user && <ApprovedQueue user={user}/> }
             {user && <SendingControls user={user}/> }
-            {user && <WritingVoice user={user}/> }
             <div className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-3 flex items-center gap-2 text-[#d4ff6a]"><ShieldCheck size={17}/><span className="text-xs font-semibold tracking-wider">SENDING SAFETY</span></div><ul className="space-y-3 text-xs leading-5 text-zinc-400"><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Manual approval required</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> Duplicate and opt-out checks</li><li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#d4ff6a]"/> No guessed email addresses</li></ul></div>
             <div className="rounded-2xl border border-dashed border-zinc-700 p-5"><p className="text-xs font-medium">Next up</p><p className="mt-2 text-sm text-zinc-400">Research public websites and generate source-linked prospect briefs. Personalised draft generation is next.</p><a href="https://github.com/prathameshmohod174/outreach-automation" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-[#d4ff6a]">View repository <ArrowUpRight size={13}/></a></div>
           </aside>
