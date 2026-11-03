@@ -1,0 +1,20 @@
+"use client";
+import { useEffect, useState } from "react";
+import type { User } from "firebase/auth";
+import { Loader2, Save, UserRoundPen } from "lucide-react";
+import { DEFAULT_WRITING_VOICE, type WritingVoiceProfile } from "@/lib/writing-voice";
+export default function WritingVoice({user,onProfileChange}:{user:User;onProfileChange:(p:WritingVoiceProfile)=>void}) {
+ const [p,setP]=useState<WritingVoiceProfile>(DEFAULT_WRITING_VOICE),[busy,setBusy]=useState(true),[saving,setSaving]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
+ useEffect(()=>{let live=true;(async()=>{try{const t=await user.getIdToken();const r=await fetch("/api/settings/writing-voice",{headers:{Authorization:"Bearer "+t}});const d=await r.json();if(!r.ok)throw Error(d.error);if(live){setP(d.profile);onProfileChange(d.profile);}}catch(e){if(live)setError(e instanceof Error?e.message:"Could not load profile");}finally{if(live)setBusy(false);}})();return()=>{live=false;};},[user,onProfileChange]);
+ const set=(k:keyof WritingVoiceProfile,v:unknown)=>setP(old=>({...old,[k]:v}));
+ const list=(k:"personality"|"writingRules"|"avoid"|"preferredClosing",label:string)=><label className="block text-xs text-zinc-400">{label}<textarea value={p[k].join("\n")} onChange={e=>set(k,e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))} rows={k==="writingRules"||k==="avoid"?4:3} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm leading-6 text-zinc-100"/></label>;
+ async function save(){setSaving(true);setError("");setNotice("");try{const t=await user.getIdToken();const r=await fetch("/api/settings/writing-voice",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify(p)});const d=await r.json();if(!r.ok)throw Error(d.error);setP(d.profile);onProfileChange(d.profile);setNotice("Saved. New drafts will use this profile.");}catch(e){setError(e instanceof Error?e.message:"Save failed");}finally{setSaving(false);}}
+ return <section className="rounded-2xl border border-zinc-800 bg-[#111114] p-5"><div className="mb-3 flex items-center gap-2 text-[#d4ff6a]"><UserRoundPen size={17}/><span className="text-xs font-semibold tracking-wider">MY WRITING VOICE</span></div><p className="mb-4 text-xs text-zinc-500">Edit the persistent profile used by Gemini when creating new drafts. Use one item per line in list fields.</p>{busy?<p className="text-xs text-zinc-500">Loading…</p>:<div className="space-y-3">
+ <label className="block text-xs text-zinc-400">Profile name<input value={p.profileName} onChange={e=>set("profileName",e.target.value)} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"/></label>
+ <label className="block text-xs text-zinc-400">Creative identity<textarea value={p.identity} onChange={e=>set("identity",e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"/></label>
+ <label className="block text-xs text-zinc-400">Tone<textarea value={p.tone} onChange={e=>set("tone",e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"/></label>
+ {list("personality","Personality traits")}{list("writingRules","Writing rules")}{list("avoid","Avoid")}{list("preferredClosing","Preferred closings")}
+ <label className="block text-xs text-zinc-400">Target length<input value={p.targetLength} onChange={e=>set("targetLength",e.target.value)} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"/></label>
+ <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-[#d4ff6a] px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">{saving?<Loader2 size={13} className="animate-spin"/>:<Save size={13}/>} Save writing voice</button>{notice&&<p className="text-xs text-emerald-300">{notice}</p>}{error&&<p className="text-xs text-red-300">{error}</p>}
+ </div>}</section>;
+}
