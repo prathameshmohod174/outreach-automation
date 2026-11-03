@@ -1,6 +1,6 @@
 # Creative Outreach OS
 
-A campaign-based creative outreach workspace built with Next.js, Firebase and Gemini.
+A campaign-based creative outreach workspace built with Next.js, Firebase, Groq and Gemini.
 
 ## MVP
 - Import prospects from CSV/XLSX and add contacts manually.
@@ -26,11 +26,11 @@ A campaign-based creative outreach workspace built with Next.js, Firebase and Ge
 ## Stack
 - Next.js App Router, TypeScript and Tailwind CSS
 - Firebase Authentication and Firestore
-- Gemini API via server-side routes only
+- Groq API (primary when configured) and Gemini API (optional fallback), called from server-side routes only
 - Gmail API OAuth (delivery phase)
 
 ## Deployment configuration
-Configure Firebase client variables, `FIREBASE_SERVICE_ACCOUNT_BASE64`, and `GEMINI_API_KEY` in the hosting provider's environment settings. Never expose server credentials with a `NEXT_PUBLIC_` prefix.
+Configure Firebase client variables and `FIREBASE_SERVICE_ACCOUNT_BASE64` in the hosting provider's environment settings. Add `GROQ_API_KEY` to use Groq as the primary draft provider; optionally retain `GEMINI_API_KEY` as a fallback for transient Groq outages. If Groq is not configured, Gemini is used when its key is present. `GROQ_MODEL` defaults to `openai/gpt-oss-120b`. Never expose server credentials with a `NEXT_PUBLIC_` prefix.
 
 ## Local development
 See `docs/SETUP.md` for setup and environment variables.
