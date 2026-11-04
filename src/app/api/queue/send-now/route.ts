@@ -56,6 +56,10 @@ export async function POST(request: NextRequest) {
 
       try {
         const item = claim.item;
+        const recipient = String(item.recipient ?? "").trim();
+        if (!/^[^\\s@<>(),;:\\[\\]\\\\"]+@[^\\s@<>(),;:\\[\\]\\\\"]+\\.[^\\s@<>(),;:\\[\\]\\\\"]+$/.test(recipient)) {
+          throw new Error("The recipient email address is invalid. Edit the prospect and approve the email again.");
+        }
         const boundary = `randomhours_${crypto.randomUUID().replace(/-/g, "")}`;
         const escapeHtml = (value: string) => value
           .replace(/&/g, "&amp;")
@@ -98,7 +102,7 @@ export async function POST(request: NextRequest) {
   </body>
 </html>`;
         const raw = [
-          `To: ${item.recipient}`,
+          `To: ${recipient}`,
           `Subject: ${String(item.subject).replace(/[\r\n]/g, " ")}`,
           "MIME-Version: 1.0",
           `Content-Type: multipart/alternative; boundary="${boundary}"`,
