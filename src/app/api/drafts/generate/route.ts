@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const input = requestSchema.parse(await request.json());
     const firstName = input.contactName?.trim().split(/\s+/)[0];
     const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-    const subject = "Freelance video production support";
+    const subject = "Could I support your next production?";
     const body = `${greeting} I’m ${input.senderName}, a freelance cinematographer, videographer and editor available for freelance production work. Would you be open to me sending over my portfolio?`;
 
     return NextResponse.json({
