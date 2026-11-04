@@ -4,8 +4,7 @@ A campaign-based creative outreach workspace built with Next.js and Firebase.
 
 ## MVP
 - Import prospects from CSV/XLSX and add contacts manually.
-- Store company, person, website and public social profile information.
-- Research public company websites and create source-linked prospect briefs.
+- Store company, person and contact information.
 - Create concise, fixed-template first-contact emails without an AI model or recipient-specific sales copy.
 - Edit, save, approve or reject each draft in the prospect workspace.
 - Configure the scheduled sending window, weekdays and daily cap in Asia/Kolkata.
