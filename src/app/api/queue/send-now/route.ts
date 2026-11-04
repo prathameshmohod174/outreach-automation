@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           htmlBody,
           `--${boundary}--`,
           ""
-        ].join("\\r\\n");
+        ].join("\r\n");
         const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
