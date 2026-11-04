@@ -56,15 +56,66 @@ export async function POST(request: NextRequest) {
 
       try {
         const item = claim.item;
+        const boundary = `randomhours_${crypto.randomUUID().replace(/-/g, "")}`;
+        const escapeHtml = (value: string) => value
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+        const safeBody = escapeHtml(String(item.body)).replace(/\\r?\\n/g, "<br>");
+        const textBody = [
+          "RANDOM HOURS",
+          "Stories told in frames",
+          "",
+          String(item.body),
+          "",
+          "Prathamesh Mohod",
+          "Freelance Cinematographer, Videographer & Editor",
+          "Random Hours"
+        ].join("\\r\\n");
+        const htmlBody = `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#f4f4f1;font-family:Arial,Helvetica,sans-serif;color:#252525;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-collapse:collapse;">
+      <tr>
+        <td style="padding:28px 32px 20px;border-bottom:1px solid #e8e8e3;">
+          <div style="font-size:15px;font-weight:700;letter-spacing:3px;color:#222222;">RANDOM HOURS</div>
+          <div style="margin-top:6px;font-size:11px;letter-spacing:1px;color:#77776f;">STORIES TOLD IN FRAMES</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:30px 32px 34px;font-size:15px;line-height:1.75;color:#30302d;">${safeBody}</td>
+      </tr>
+      <tr>
+        <td style="padding:18px 32px 24px;border-top:1px solid #e8e8e3;font-size:12px;line-height:1.6;color:#66665f;">
+          <strong style="color:#30302d;">Prathamesh Mohod</strong><br>
+          Freelance Cinematographer, Videographer &amp; Editor<br>
+          <span style="letter-spacing:1px;">RANDOM HOURS</span>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
         const raw = [
           `To: ${item.recipient}`,
-          `Subject: ${String(item.subject).replace(/[\r\n]/g, " ")}`,
+          `Subject: ${String(item.subject).replace(/[\\r\\n]/g, " ")}`,
           "MIME-Version: 1.0",
+          `Content-Type: multipart/alternative; boundary="${boundary}"`,
+          "",
+          `--${boundary}`,
           'Content-Type: text/plain; charset="UTF-8"',
           "Content-Transfer-Encoding: 8bit",
           "",
-          String(item.body).replace(/\r?\n/g, "\r\n")
-        ].join("\r\n");
+          textBody,
+          `--${boundary}`,
+          'Content-Type: text/html; charset="UTF-8"',
+          "Content-Transfer-Encoding: 8bit",
+          "",
+          htmlBody,
+          `--${boundary}--`,
+          ""
+        ].join("\\r\\n");
         const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
