@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#39;");
-        const safeBody = escapeHtml(String(item.body)).replace(/\\r?\\n/g, "<br>");
+        const safeBody = escapeHtml(String(item.body)).replace(/\r?\n/g, "<br>");
         const textBody = [
           "RANDOM HOURS",
           "Stories told in frames",
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           "Prathamesh Mohod",
           "Freelance Cinematographer, Videographer & Editor",
           "Random Hours"
-        ].join("\\r\\n");
+        ].join("\r\n");
         const htmlBody = `<!doctype html>
 <html lang="en">
   <body style="margin:0;padding:24px;background:#f4f4f1;font-family:Arial,Helvetica,sans-serif;color:#252525;">
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 </html>`;
         const raw = [
           `To: ${item.recipient}`,
-          `Subject: ${String(item.subject).replace(/[\\r\\n]/g, " ")}`,
+          `Subject: ${String(item.subject).replace(/[\r\n]/g, " ")}`,
           "MIME-Version: 1.0",
           `Content-Type: multipart/alternative; boundary="${boundary}"`,
           "",
