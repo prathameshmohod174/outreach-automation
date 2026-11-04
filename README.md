@@ -1,12 +1,12 @@
 # Creative Outreach OS
 
-A campaign-based creative outreach workspace built with Next.js, Firebase, Groq and Gemini.
+A campaign-based creative outreach workspace built with Next.js and Firebase.
 
 ## MVP
 - Import prospects from CSV/XLSX and add contacts manually.
 - Store company, person, website and public social profile information.
-- Research public company websites and create source-linked AI prospect briefs.
-- Generate personalised email drafts from saved prospect research and user-verified context.
+- Research public company websites and create source-linked prospect briefs.
+- Create concise, fixed-template first-contact emails without an AI model or recipient-specific sales copy.
 - Edit, save, approve or reject each draft in the prospect workspace.
 - Configure the scheduled sending window, weekdays and daily cap in Asia/Kolkata.
 - Manually send up to 10 already-approved queue items with an explicit confirmation; manual sending bypasses the time window but not the daily cap.
@@ -26,11 +26,11 @@ A campaign-based creative outreach workspace built with Next.js, Firebase, Groq 
 ## Stack
 - Next.js App Router, TypeScript and Tailwind CSS
 - Firebase Authentication and Firestore
-- Groq API (primary when configured) and Gemini API (optional fallback), called from server-side routes only
+- Deterministic server-side email template; no AI provider or model API required
 - Gmail API OAuth (delivery phase)
 
 ## Deployment configuration
-Configure Firebase client variables and `FIREBASE_SERVICE_ACCOUNT_BASE64` in the hosting provider's environment settings. Add `GROQ_API_KEY` to use Groq as the primary draft provider; optionally retain `GEMINI_API_KEY` as a fallback for transient Groq outages. If Groq is not configured, Gemini is used when its key is present. `GROQ_MODEL` defaults to `openai/gpt-oss-120b`. Never expose server credentials with a `NEXT_PUBLIC_` prefix.
+Configure Firebase client variables and `FIREBASE_SERVICE_ACCOUNT_BASE64` in the hosting provider's environment settings. Draft creation uses a fixed template and requires no AI API keys.
 
 ## Local development
 See `docs/SETUP.md` for setup and environment variables.
